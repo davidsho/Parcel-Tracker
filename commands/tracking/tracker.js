@@ -230,7 +230,7 @@ const ups = async ({trackingNumber}) => {
     }
 }
 
-const basic_hermes = async ({trackingNumber}) => {
+const basic_hermes = async ({trackingNumber, postCode}) => {
     const url = `https://api.hermesworld.co.uk/enterprise-tracking-api/v1/parcels/search/${trackingNumber}`
     const headers = {
         apiKey: 'R6xkX4kqK4U7UxqTNraxmXrnPi8cFPZ6'
@@ -241,8 +241,13 @@ const basic_hermes = async ({trackingNumber}) => {
         headers: headers
     }
     const res = await axios(opts)
-    const extra = await advanced_hermes({uniqueId: res.data[0]})
+    const extra = await advanced_hermes({uniqueId: res.data[0], postCode: postCode})
     const trackUrl = `https://www.myhermes.co.uk/track#/parcel/${trackingNumber}/details`
+    let imageStream, attachment
+    if (extra.image) {
+        imageStream = new Buffer.from(extra.image.split(';base64,').pop(), 'base64');
+        attachment = new Discord.MessageAttachment(imageStream, 'test.jpg')
+    }
     const returnEmbed = new Discord.MessageEmbed()
 	.setColor('#ADD8E6')
 	.setTitle('Track Parcel from Hermes')
@@ -258,12 +263,17 @@ const basic_hermes = async ({trackingNumber}) => {
         value: new Date(extra.updated).toUTCString(),
         inline: true
     })
-	.setTimestamp()
+    .setTimestamp()
+    .setThumbnail(extra.mapUrl)
+    if (attachment) {
+        returnEmbed.attachFiles(attachment)
+        returnEmbed.setImage('attachment://test.jpg')
+    }
     return returnEmbed
 }
 
-const advanced_hermes = async ({uniqueId}) => {
-    const url = `https://api.hermesworld.co.uk/enterprise-tracking-api/v1/parcels/?uniqueIds=${uniqueId}`
+const advanced_hermes = async ({uniqueId, postCode}) => {
+    const url = `https://api.hermesworld.co.uk/enterprise-tracking-api/v1/parcels/?uniqueIds=${uniqueId}&postcode=${postCode}`
     const headers = {
         apiKey: 'R6xkX4kqK4U7UxqTNraxmXrnPi8cFPZ6'
     }
@@ -275,11 +285,36 @@ const advanced_hermes = async ({uniqueId}) => {
     const res = await axios(opts)
     const recentEvent = res.data.results[0].trackingEvents[0]
     const sender = res.data.results[0].sender
-    return {
+    const recipient = res.data.results[0].recipient
+    let returnDict =  {
         status: recentEvent.trackingStage.description,
         updated: recentEvent.dateTime,
         sender: sender.displayName
     }
+    let mapUrl, image
+    if (recentEvent.location) {
+        mapUrl = recentEvent.location.mapUrl
+    }
+    if (recentEvent.proofOfDelivery) {
+        image = await get_hermes_image({photoUri: recentEvent.proofOfDelivery.photoUri, postCode: postCode})
+    }
+    returnDict.mapUrl = mapUrl
+    returnDict.image = image
+    return returnDict
+}
+
+const get_hermes_image = async ({photoUri, postCode}) => {
+    const url = `https://api.hermesworld.co.uk/enterprise-tracking-api/v1${photoUri}?postcode=${postCode}`
+    const headers = {
+        apiKey: 'R6xkX4kqK4U7UxqTNraxmXrnPi8cFPZ6'
+    }
+    const opts = {
+        url: url,
+        method: 'get',
+        headers: headers
+    }
+    const res = await axios(opts)
+    return res.data.image
 }
 
 
@@ -297,7 +332,7 @@ const execute = async (message, args) => {
         const res = await ups({trackingNumber: referenceNum})
         await message.reply(res)
     } else if (courier.toLowerCase() === 'hermes') {
-        const res = await basic_hermes({trackingNumber: referenceNum})
+        const res = await basic_hermes({trackingNumber: referenceNum, postCode: postCode})
         await message.reply(res)
     }
 }
