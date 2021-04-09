@@ -133,7 +133,6 @@ const basic_hermes = async ({message, trackingNumber, postCode}) => {
             }
             await message.author.send(returnEmbed)
         } else {
-            extra = new_extra
             if (new_extra.status === 'Delivered') {
                 console.log("Finished monitoring as parcel has been delivered.")
                 await message.author.send(`Finished monitoring parcel \`${trackingNumber}\` as it has been delivered and received.`)
@@ -142,6 +141,7 @@ const basic_hermes = async ({message, trackingNumber, postCode}) => {
                 console.log("No changes, waiting a minute...")
             }
         }
+        extra = new_extra
     }, 60000);
 }
 
@@ -204,7 +204,7 @@ const formatTime = async (time) => {
     return `${hour}:${min}:${sec}`
 }
 
-const ups = async ({trackingNumber}) => {
+const ups = async ({message, trackingNumber}) => {
 
     const trackUrl = `https://www.ups.com/track?tracknum=${trackingNumber}&requester=WT/trackdetails`
 
@@ -267,7 +267,7 @@ const ups = async ({trackingNumber}) => {
         const {location, status} = recentActivity
         const activityType = status.type
         const activityDescription = status.description
-        const updatedTime = recentActivity.time
+        let updatedTime = recentActivity.time
         const updatedDate = recentActivity.date
         const {address} = location
         let recentLocation
@@ -295,10 +295,10 @@ const ups = async ({trackingNumber}) => {
         if (deliveryDate) {
             returnEmbed = new Discord.MessageEmbed()
             .setColor('#FFD700')
-            .setTitle('Track Parcel from UPS')
+            .setTitle(`Monitor Parcel \`${trackingNumber}\` from UPS`)
             .setURL(trackUrl)
             .setAuthor('Parcel Tracker')
-            .setDescription(`Your parcel has an update from UPS on \`${new Date(await formatDate(updatedDate)).toDateString()}\` at \`${await formatTime(updatedTime)}\``)
+            .setDescription(`Started monitoring the parcel for any updates. You will receive a DM if anything changes.\nYour parcel has an update from UPS on \`${new Date(await formatDate(updatedDate)).toDateString()}\` at \`${await formatTime(updatedTime)}\``)
             .addFields({
                 name: "Status",
                 value: typeDict[activityType],
@@ -317,16 +317,17 @@ const ups = async ({trackingNumber}) => {
                 inline: true
             }, {
                 name: "Delivery Time",
-                value: `${deliveryTimeType !== 'DEL' ? `${deliveryDict[deliveryTimeType]}, ` : ''}${await formatTime(deliveryStartTime)}-${await formatTime(deliveryEndTime)}`
+                value: `${deliveryTimeType !== 'DEL' ? `${deliveryDict[deliveryTimeType]}, ` : ''}${await formatTime(deliveryStartTime)}-${await formatTime(deliveryEndTime)}`,
+                inline: true
             })
             .setTimestamp()
         } else {
             returnEmbed = new Discord.MessageEmbed()
             .setColor('#FFD700')
-            .setTitle('Track Parcel from UPS')
+            .setTitle(`Monitor Parcel \`${trackingNumber}\` from UPS`)
             .setURL(trackUrl)
             .setAuthor('Parcel Tracker')
-            .setDescription(`Your parcel has an update from UPS on \`${new Date(await formatDate(updatedDate)).toDateString()}\` at \`${await formatTime(updatedTime)}\``)
+            .setDescription(`Started monitoring the parcel for any updates. You will receive a DM if anything changes.\nYour parcel has an update from UPS on \`${new Date(await formatDate(updatedDate)).toDateString()}\` at \`${await formatTime(updatedTime)}\``)
             .addFields({
                 name: "Status",
                 value: typeDict[activityType],
@@ -342,10 +343,150 @@ const ups = async ({trackingNumber}) => {
             })
             .setTimestamp()
         }
-        return returnEmbed
+        await message.author.send(returnEmbed)
+        let interval = setInterval(async () => {
+            const new_data = await check_ups({trackingNumber: trackingNumber})
+            new_data.warnings && clearInterval(interval)
+            if (new_data.updatedTime !== updatedTime) {
+                let returnEmbed
+                if (new_data.deliveryDate) {
+                    returnEmbed = new Discord.MessageEmbed()
+                    .setColor('#FFD700')
+                    .setTitle(`Monitor Parcel \`${trackingNumber}\` from UPS`)
+                    .setURL(trackUrl)
+                    .setAuthor('Parcel Tracker')
+                    .setDescription(`Your parcel has an update from UPS on \`${new Date(await formatDate(new_data.updatedDate)).toDateString()}\` at \`${await formatTime(new_data.updatedTime)}\``)
+                    .addFields({
+                        name: "Status",
+                        value: typeDict[new_data.activityType],
+                        inline: true
+                    }, {
+                        name: "Description",
+                        value: new_data.activityDescription,
+                        inline: true
+                    }, {
+                        name: "Recent Location",
+                        value: new_data.recentLocation,
+                        inline: true
+                    }, {
+                        name: "Delivery Date",
+                        value: `${new_data.deliveryDateType !== 'DEL' ? `${deliveryDict[new_data.deliveryDateType]}, ` : ''}${new Date(await formatDate(new_data.actualDeliveryDate)).toDateString()}`,
+                        inline: true
+                    }, {
+                        name: "Delivery Time",
+                        value: `${new_data.deliveryTimeType !== 'DEL' ? `${deliveryDict[new_data.deliveryTimeType]}, ` : ''}${await formatTime(new_data.deliveryStartTime)}-${await formatTime(new_data.deliveryEndTime)}`,
+                        inline: true
+                    })
+                    .setTimestamp()
+                } else {
+                    returnEmbed = new Discord.MessageEmbed()
+                    .setColor('#FFD700')
+                    .setTitle(`Monitor Parcel \`${trackingNumber}\` from UPS`)
+                    .setURL(trackUrl)
+                    .setAuthor('Parcel Tracker')
+                    .setDescription(`Your parcel has an update from UPS on \`${new Date(await formatDate(new_data.updatedDate)).toDateString()}\` at \`${await formatTime(new_data.updatedTime)}\``)
+                    .addFields({
+                        name: "Status",
+                        value: typeDict[new_data.activityType],
+                        inline: true
+                    }, {
+                        name: "Description",
+                        value: new_data.activityDescription,
+                        inline: true
+                    }, {
+                        name: "Recent Location",
+                        value: new_data.recentLocation,
+                        inline: true
+                    })
+                    .setTimestamp()
+                }
+                await message.author.send(returnEmbed)
+            } else {
+                if (new_data.activityType === 'D') {
+                    console.log("Finished monitoring as parcel has been delivered.")
+                    await message.author.send(`Finished monitoring parcel \`${trackingNumber}\` as it has been delivered and received.`)
+                    clearInterval(interval)
+                } else {
+                    console.log("No changes, waiting a minute...")
+                }
+            }
+            updatedTime = new_data.updatedTime
+        }, 60000);
     }
 }
 
+const check_ups = async ({trackingNumber}) => {
+    
+    const url = `https://onlinetools.ups.com/track/v1/details/${trackingNumber}`
+    const headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "AccessLicenseNumber": "FD98604AF6B3AFF5"
+    }
+    const opts = {
+        url: url,
+        headers: headers,
+        method: 'get'
+    }
+    const res = await axios(opts)
+    const {trackResponse} = res.data
+    try {
+        const {warnings} = trackResponse.shipment[0]
+        const warningsList = warnings.map(warning => {
+            return {
+                name: `Warning ${warnings.indexOf(warning) + 1}`,
+                value: `Code: ${warning.code}\n${warning.message}`,
+                inline: true
+            }
+        })
+        return {
+            warnings: warningsList
+        }
+    } catch (error) {
+        const {package} = trackResponse.shipment[0]
+        const recentActivity = package[0].activity[0]
+        const {location, status} = recentActivity
+        const activityType = status.type
+        const activityDescription = status.description
+        const updatedTime = recentActivity.time
+        const updatedDate = recentActivity.date
+        const {address} = location
+        let recentLocation
+        if (address.city) {
+            recentLocation = `${address.city}, ${address.country}`
+        } else {
+            recentLocation = address.country
+        }
+        let deliveryDate, deliveryDateType, actualDeliveryDate, deliveryTime, deliveryStartTime, deliveryEndTime, deliveryTimeType
+        if (package[0].deliveryDate) {
+            deliveryDate = package[0].deliveryDate
+            deliveryDateType = deliveryDate[0].type
+            actualDeliveryDate = deliveryDate[0].date 
+        }
+        if (package[0].deliveryTime) {
+            deliveryTime = package[0].deliveryTime
+            deliveryStartTime = deliveryTime.startTime
+            deliveryEndTime = deliveryTime.endTime
+            if (!deliveryStartTime) {
+                deliveryStartTime = deliveryEndTime
+            }
+            deliveryTimeType = deliveryTime.type
+        }
+        return {
+            activityType: activityType,
+            activityDescription: activityDescription,
+            updatedTime: updatedTime,
+            updatedDate: updatedDate,
+            recentLocation: recentLocation,
+            deliveryDate: deliveryDate,
+            deliveryDateType: deliveryDateType,
+            actualDeliveryDate: actualDeliveryDate,
+            deliveryStartTime: deliveryStartTime,
+            deliveryEndTime: deliveryEndTime,
+            deliveryTimeType: deliveryTimeType
+        }
+    }
+}
 
 const execute = async (message, args) => {
     const courier = args[0]
@@ -354,11 +495,11 @@ const execute = async (message, args) => {
     if (!courier) {
         await message.reply("You didn't provide all the necessary arguments. `.tracker [courier] [reference number] [post code]`")
     }
+    message.channel.type !== 'dm' && await message.reply("Check your DMs")
     if (courier.toLowerCase() === 'dpd') {
         await basic_dpd({message: message, referenceNum: referenceNum, postCode: postCode})
     } else if (courier.toLowerCase() === 'ups') {
-        const res = await ups({trackingNumber: referenceNum})
-        await message.reply(res)
+        await ups({message: message, trackingNumber: referenceNum})
     } else if (courier.toLowerCase() === 'hermes') {
         await basic_hermes({message: message, trackingNumber: referenceNum, postCode: postCode})
     }

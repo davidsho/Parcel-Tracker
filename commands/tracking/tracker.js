@@ -201,7 +201,8 @@ const ups = async ({trackingNumber}) => {
                 inline: true
             }, {
                 name: "Delivery Time",
-                value: `${deliveryTimeType !== 'DEL' ? `${deliveryDict[deliveryTimeType]}, ` : ''}${await formatTime(deliveryStartTime)}-${await formatTime(deliveryEndTime)}`
+                value: `${deliveryTimeType !== 'DEL' ? `${deliveryDict[deliveryTimeType]}, ` : ''}${await formatTime(deliveryStartTime)}-${await formatTime(deliveryEndTime)}`,
+                inline: true
             })
             .setTimestamp()
         } else {
