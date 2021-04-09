@@ -1,0 +1,25 @@
+{
+  "name": "parcel-tracker-discord",
+  "version": "1.0.0",
+  "description": "This project uses Discord.js. It provides a platform to track multiple packages from multiple couriers.",
+  "main": "bot.js",
+  "dependencies": {
+    "axios": "^0.21.1",
+    "discord.js": "^12.5.3"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "start": "node bot.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/davidsho/Parcel-Tracker.git"
+  },
+  "author": "David Shortland",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/davidsho/Parcel-Tracker/issues"
+  },
+  "homepage": "https://github.com/davidsho/Parcel-Tracker#readme"
+}

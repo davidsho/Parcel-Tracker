@@ -1,4 +1,5 @@
 {
 	"prefix": ".",
-	"token": "DISCORD BOT TOKEN"
+	"token": "DISCORD BOT TOKEN",
+	"UPS_ACCESS_KEY": "YOUR UPS API KEY"
 }

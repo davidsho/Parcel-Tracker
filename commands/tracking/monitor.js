@@ -1,5 +1,7 @@
 const axios = require("axios")
 const Discord = require("discord.js")
+const { UPS_ACCESS_KEY } = require("../../config.json")
+
 
 const check_dpd = async ({referenceNum, postCode}) => {
     const url = `https://apis.track.dpd.co.uk/v1/reference?origin=PRTK&postcode=${postCode}&referenceNumber=${referenceNum}`
@@ -233,7 +235,7 @@ const ups = async ({message, trackingNumber}) => {
     const headers = {
         "Content-Type": "application/json",
         "Accept": "application/json",
-        "AccessLicenseNumber": "FD98604AF6B3AFF5"
+        "AccessLicenseNumber": UPS_ACCESS_KEY
     }
     const opts = {
         url: url,
