@@ -1,6 +1,7 @@
 # Parcel Tracker Discord Bot
 
 This project uses Discord.js. It provides a platform to track multiple packages from multiple couriers.
+To invite the bot I host, click [here](https://discord.com/oauth2/authorize?client_id=828975675322794005&scope=bot&permissions=8).
 
 ## What You Need
 
