@@ -325,18 +325,34 @@ const execute = async (message, args) => {
     const referenceNum = args[1]
     const postCode = args[2]
     if (!courier) {
-        await message.reply("You didn't provide all the necessary arguments. `.tracker [courier] [reference number] [post code]`")
+        await message.reply("you didn't provide all the necessary arguments. `.tracker [courier] [reference number] [post code]`")
     }
+    message.channel.startTyping()
     if (courier.toLowerCase() === 'dpd') {
-        const res = await basic_dpd({referenceNum: referenceNum, postCode: postCode})
-        await message.reply(res)
+        try {
+            const res = await basic_dpd({referenceNum: referenceNum, postCode: postCode})
+            await message.reply(res)
+        } catch (error) {
+            await message.reply("there was an error completing this request, please check that the information you provided was correct.")
+        }
     } else if (courier.toLowerCase() === 'ups') {
-        const res = await ups({trackingNumber: referenceNum})
-        await message.reply(res)
+        try {
+            const res = await ups({trackingNumber: referenceNum})
+            await message.reply(res)
+        } catch (error) {
+            await message.reply("there was an error completing this request, please check that the information you provided was correct.")
+        }
     } else if (courier.toLowerCase() === 'hermes') {
-        const res = await basic_hermes({trackingNumber: referenceNum, postCode: postCode})
-        await message.reply(res)
+        try {
+            const res = await basic_hermes({trackingNumber: referenceNum, postCode: postCode})
+            await message.reply(res)
+        } catch (error) {
+            await message.relpy("there was an error completing this request, please check that the information you provided was correct.")
+        }
+    } else {
+        await message.reply("that courier is not recognised; use `ups`, `dpd` or `hermes`")
     }
+    message.channel.stopTyping()
 }
 
 module.exports = {

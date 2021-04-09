@@ -495,15 +495,30 @@ const execute = async (message, args) => {
     const referenceNum = args[1]
     const postCode = args[2]
     if (!courier) {
-        await message.reply("You didn't provide all the necessary arguments. `.tracker [courier] [reference number] [post code]`")
+        await message.reply("you didn't provide all the necessary arguments. `.tracker [courier] [reference number] [post code]`")
     }
-    message.channel.type !== 'dm' && await message.reply("Check your DMs")
+    message.channel.startTyping()
+    message.channel.type !== 'dm' && await message.reply("Check your DMs"); message.channel.stopTyping()
     if (courier.toLowerCase() === 'dpd') {
-        await basic_dpd({message: message, referenceNum: referenceNum, postCode: postCode})
+        try {
+            await basic_dpd({message: message, referenceNum: referenceNum, postCode: postCode})
+        } catch (error) {
+            await message.author.send("There was an error completing this request, please check that the information you provided was correct.")
+        }
     } else if (courier.toLowerCase() === 'ups') {
-        await ups({message: message, trackingNumber: referenceNum})
+        try {
+            await ups({message: message, trackingNumber: referenceNum})
+        } catch (error) {
+            await message.author.send("There was an error completing this request, please check that the information you provided was correct.")
+        }
     } else if (courier.toLowerCase() === 'hermes') {
-        await basic_hermes({message: message, trackingNumber: referenceNum, postCode: postCode})
+        try {
+            await basic_hermes({message: message, trackingNumber: referenceNum, postCode: postCode})
+        } catch (error) {
+            await message.author.send("There was an error completing this request, please check that the information you provided was correct.")
+        }
+    } else {
+        await message.reply("that courier is not recognised; use `ups`, `dpd` or `hermes`")
     }
 }
 
